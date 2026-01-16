@@ -18,6 +18,7 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
   }
   
   input[type="number"] {
@@ -43,6 +44,11 @@
   button:disabled {
     background: #ccc;
     cursor: not-allowed;
+  }
+  
+  .main-container {
+    display: flex;
+    gap: 20px;
   }
   
   #grid {
@@ -73,6 +79,54 @@
   .tile.dragging {
     opacity: 0.5;
   }
+  
+  .saved-states {
+    min-width: 200px;
+    max-width: 300px;
+  }
+  
+  .saved-states h3 {
+    margin-top: 0;
+    font-size: 14px;
+  }
+  
+  .state-item {
+    border: 2px solid #ddd;
+    padding: 8px;
+    margin-bottom: 10px;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  
+  .state-item:hover {
+    border-color: #ff8c42;
+  }
+  
+  .state-item canvas {
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    border: 1px solid #ddd;
+    margin-bottom: 5px;
+  }
+  
+  .state-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+  }
+  
+  .state-delete {
+    background: #ff6b6b;
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  
+  .state-delete:hover {
+    background: #ff5252;
+  }
 </style>
 </head>
 <body>
@@ -82,11 +136,19 @@
   <label>Cols: <input type="number" id="cols" value="50" min="1"></label>
   <button onclick="createGrid()">Resize</button>
   <button onclick="undo()" id="undoBtn" disabled>Undo</button>
+  <button onclick="saveGridState()">Save State</button>
   <button onclick="copyText()">Copy</button>
   <button onclick="clearGrid()">Clear</button>
 </div>
 
-<div id="grid"></div>
+<div class="main-container">
+  <div id="grid"></div>
+  
+  <div class="saved-states">
+    <h3>Saved States</h3>
+    <div id="statesList"></div>
+  </div>
+</div>
 
 <script>
 let rows = 30;
@@ -96,6 +158,7 @@ let focusedCol = 0;
 let tiles = [];
 let history = [];
 let maxHistory = 50;
+let savedStates = [];
 
 function saveState() {
   const state = [];
@@ -125,6 +188,99 @@ function undo() {
 
 function updateUndoButton() {
   document.getElementById('undoBtn').disabled = history.length === 0;
+}
+
+function saveGridState() {
+  const state = [];
+  for (let r = 0; r < rows; r++) {
+    state[r] = [];
+    for (let c = 0; c < cols; c++) {
+      state[r][c] = tiles[r][c].textContent;
+    }
+  }
+  
+  const timestamp = new Date().toLocaleString();
+  savedStates.push({
+    grid: state,
+    rows: rows,
+    cols: cols,
+    timestamp: timestamp
+  });
+  
+  renderSavedStates();
+}
+
+function loadGridState(index) {
+  const state = savedStates[index];
+  
+  // Resize if needed
+  if (state.rows !== rows || state.cols !== cols) {
+    document.getElementById('rows').value = state.rows;
+    document.getElementById('cols').value = state.cols;
+    createGrid();
+  }
+  
+  saveState(); // Save to undo history
+  
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      tiles[r][c].textContent = state.grid[r][c];
+    }
+  }
+  
+  focusTile(0, 0);
+}
+
+function deleteGridState(index) {
+  savedStates.splice(index, 1);
+  renderSavedStates();
+}
+
+function renderSavedStates() {
+  const container = document.getElementById('statesList');
+  container.innerHTML = '';
+  
+  savedStates.forEach((state, index) => {
+    const item = document.createElement('div');
+    item.className = 'state-item';
+    
+    // Create canvas preview
+    const canvas = document.createElement('canvas');
+    const previewWidth = 250;
+    const previewHeight = Math.floor(previewWidth * (state.rows / state.cols));
+    canvas.width = state.cols;
+    canvas.height = state.rows;
+    canvas.style.width = previewWidth + 'px';
+    canvas.style.height = previewHeight + 'px';
+    
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, state.cols, state.rows);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.font = '1px monospace';
+    
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        const char = state.grid[r][c];
+        if (char !== ' ') {
+          ctx.fillText(char, c, r + 0.8);
+        }
+      }
+    }
+    
+    const info = document.createElement('div');
+    info.className = 'state-info';
+    info.innerHTML = `
+      <span>${state.timestamp}</span>
+      <button class="state-delete" onclick="event.stopPropagation(); deleteGridState(${index})">Delete</button>
+    `;
+    
+    item.appendChild(canvas);
+    item.appendChild(info);
+    item.onclick = () => loadGridState(index);
+    
+    container.appendChild(item);
+  });
 }
 
 function createGrid() {
