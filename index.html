@@ -32,6 +32,10 @@
     width: 120px;
   }
   
+  #playInterval {
+    width: 70px;
+  }
+  
   button {
     padding: 6px 12px;
     border: 1px solid #ddd;
@@ -196,6 +200,8 @@
   <button onclick="saveGridState()">Save State</button>
   <button onclick="copyText()">Copy</button>
   <button onclick="clearGrid()">Clear</button>
+  <label>Interval (ms): <input type="number" id="playInterval" value="500" min="100" step="100"></label>
+  <button onclick="togglePlayback()" id="playBtn">▶ Play</button>
 </div>
 
 <div class="main-container">
@@ -226,8 +232,56 @@ let selectionEnd = null;
 let selectedTiles = new Set();
 let isDraggingSelection = false;
 let dragStartPos = null;
-let clipboardData = null;
 let anchorPos = null; // For shift+click/arrow selection
+
+// Playback state
+let isPlaying = false;
+let playbackTimer = null;
+let currentPlayIndex = 0;
+
+function togglePlayback() {
+  if (isPlaying) {
+    stopPlayback();
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  const states = branches[activeBranch] || [];
+  if (states.length === 0) return;
+  
+  isPlaying = true;
+  currentPlayIndex = 0;
+  document.getElementById('playBtn').textContent = '⏸ Stop';
+  
+  playNextState();
+}
+
+function playNextState() {
+  const states = branches[activeBranch] || [];
+  
+  if (currentPlayIndex >= states.length) {
+    stopPlayback();
+    return;
+  }
+  
+  loadGridState(currentPlayIndex);
+  currentPlayIndex++;
+  
+  const interval = parseInt(document.getElementById('playInterval').value) || 500;
+  playbackTimer = setTimeout(playNextState, interval);
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  if (playbackTimer) {
+    clearTimeout(playbackTimer);
+    playbackTimer = null;
+  }
+  document.getElementById('playBtn').textContent = '▶ Play';
+  currentPlayIndex = 0;
+}
 
 function loadFromStorage() {
   const saved = localStorage.getItem('textGrid');
@@ -520,45 +574,31 @@ function getSelectionBounds() {
   return { minR, maxR, minC, maxC };
 }
 
-function copySelection() {
+function getSelectionText() {
   const bounds = getSelectionBounds();
-  if (!bounds) return;
+  if (!bounds) return '';
   
-  clipboardData = [];
+  let text = '';
   for (let r = bounds.minR; r <= bounds.maxR; r++) {
-    clipboardData[r - bounds.minR] = [];
+    let line = '';
     for (let c = bounds.minC; c <= bounds.maxC; c++) {
-      clipboardData[r - bounds.minR][c - bounds.minC] = tiles[r][c].textContent;
+      line += tiles[r][c].textContent;
     }
+    // Trim trailing spaces
+    line = line.replace(/\s+$/, '');
+    text += line;
+    if (r < bounds.maxR) text += '\n';
   }
+  return text;
 }
 
 function cutSelection() {
-  copySelection();
   saveState();
   
   selectedTiles.forEach(key => {
     const [r, c] = key.split(',').map(Number);
     tiles[r][c].textContent = ' ';
   });
-  
-  saveToStorage();
-}
-
-function pasteSelection() {
-  if (!clipboardData) return;
-  
-  saveState();
-  
-  for (let r = 0; r < clipboardData.length; r++) {
-    for (let c = 0; c < clipboardData[r].length; c++) {
-      const targetR = focusedRow + r;
-      const targetC = focusedCol + c;
-      if (targetR < rows && targetC < cols) {
-        tiles[targetR][targetC].textContent = clipboardData[r][c];
-      }
-    }
-  }
   
   saveToStorage();
 }
@@ -611,7 +651,6 @@ function handleMouseDown(e, r, c) {
     // Click on highlighted area: start drag
     isDraggingSelection = true;
     dragStartPos = { r, c };
-    copySelection();
   } else {
     // Normal click: start new selection
     isSelecting = true;
@@ -652,6 +691,15 @@ function handleMouseUp() {
       
       saveState();
       
+      // Store selection content
+      const dragData = [];
+      for (let r = bounds.minR; r <= bounds.maxR; r++) {
+        dragData[r - bounds.minR] = [];
+        for (let c = bounds.minC; c <= bounds.maxC; c++) {
+          dragData[r - bounds.minR][c - bounds.minC] = tiles[r][c].textContent;
+        }
+      }
+      
       // Clear original selection
       selectedTiles.forEach(key => {
         const [r, c] = key.split(',').map(Number);
@@ -659,20 +707,20 @@ function handleMouseUp() {
       });
       
       // Paste at new location
-      for (let r = 0; r < clipboardData.length; r++) {
-        for (let c = 0; c < clipboardData[r].length; c++) {
+      for (let r = 0; r < dragData.length; r++) {
+        for (let c = 0; c < dragData[r].length; c++) {
           const newR = bounds.minR + r + offsetR;
           const newC = bounds.minC + c + offsetC;
           if (newR >= 0 && newR < rows && newC >= 0 && newC < cols) {
-            tiles[newR][newC].textContent = clipboardData[r][c];
+            tiles[newR][newC].textContent = dragData[r][c];
           }
         }
       }
       
       // Update selection
       clearSelection();
-      for (let r = 0; r < clipboardData.length; r++) {
-        for (let c = 0; c < clipboardData[r].length; c++) {
+      for (let r = 0; r < dragData.length; r++) {
+        for (let c = 0; c < dragData[r].length; c++) {
           const newR = bounds.minR + r + offsetR;
           const newC = bounds.minC + c + offsetC;
           if (newR >= 0 && newR < rows && newC >= 0 && newC < cols) {
@@ -723,24 +771,28 @@ function pasteAtTile(r, c) {
     saveState();
     focusTile(r, c, true);
     
+    let lastR = r;
+    let lastC = c;
+    
     for (let char of text) {
-      if (focusedRow >= rows) break;
+      if (lastR >= rows) break;
       
       if (char === '\n') {
-        focusedCol = 0;
-        focusedRow++;
+        lastC = 0;
+        lastR++;
       } else {
-        tiles[focusedRow][focusedCol].textContent = char;
-        focusedCol++;
+        tiles[lastR][lastC].textContent = char;
+        lastC++;
         
-        if (focusedCol >= cols) {
-          focusedCol = 0;
-          focusedRow++;
+        if (lastC >= cols) {
+          lastC = 0;
+          lastR++;
         }
       }
     }
     
-    focusTile(focusedRow, focusedCol, true);
+    // Move cursor to end of pasted content
+    focusTile(lastR, lastC, true);
     saveToStorage();
   });
 }
@@ -748,9 +800,13 @@ function pasteAtTile(r, c) {
 function copyText() {
   let text = '';
   for (let r = 0; r < rows; r++) {
+    let line = '';
     for (let c = 0; c < cols; c++) {
-      text += tiles[r][c].textContent;
+      line += tiles[r][c].textContent;
     }
+    // Trim trailing spaces
+    line = line.replace(/\s+$/, '');
+    text += line;
     if (r < rows - 1) text += '\n';
   }
   navigator.clipboard.writeText(text);
@@ -770,61 +826,44 @@ document.addEventListener('paste', (e) => {
   
   saveState();
   
+  let lastR = focusedRow;
+  let lastC = focusedCol;
+  
   for (let char of text) {
-    if (focusedRow >= rows) break;
+    if (lastR >= rows) break;
     
     if (char === '\n') {
-      focusedCol = 0;
-      focusedRow++;
+      lastC = 0;
+      lastR++;
     } else {
-      tiles[focusedRow][focusedCol].textContent = char;
-      focusedCol++;
+      tiles[lastR][lastC].textContent = char;
+      lastC++;
       
-      if (focusedCol >= cols) {
-        focusedCol = 0;
-        focusedRow++;
+      if (lastC >= cols) {
+        lastC = 0;
+        lastR++;
       }
     }
   }
   
-  focusTile(focusedRow, focusedCol, true);
+  // Move cursor to end of pasted content
+  focusTile(lastR, lastC, true);
   saveToStorage();
 });
 
 document.addEventListener('keydown', (e) => {
   // Copy
   if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedTiles.size > 0) {
-    copySelection();
-    const bounds = getSelectionBounds();
-    let text = '';
-    for (let r = bounds.minR; r <= bounds.maxR; r++) {
-      for (let c = bounds.minC; c <= bounds.maxC; c++) {
-        text += tiles[r][c].textContent;
-      }
-      if (r < bounds.maxR) text += '\n';
-    }
+    const text = getSelectionText();
     navigator.clipboard.writeText(text);
     e.preventDefault();
   }
   
   // Cut
   else if ((e.ctrlKey || e.metaKey) && e.key === 'x' && selectedTiles.size > 0) {
-    const bounds = getSelectionBounds();
-    let text = '';
-    for (let r = bounds.minR; r <= bounds.maxR; r++) {
-      for (let c = bounds.minC; c <= bounds.maxC; c++) {
-        text += tiles[r][c].textContent;
-      }
-      if (r < bounds.maxR) text += '\n';
-    }
+    const text = getSelectionText();
     navigator.clipboard.writeText(text);
     cutSelection();
-    e.preventDefault();
-  }
-  
-  // Paste
-  else if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboardData) {
-    pasteSelection();
     e.preventDefault();
   }
   
@@ -849,6 +888,12 @@ document.addEventListener('keydown', (e) => {
   // Undo
   else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
     undo();
+    e.preventDefault();
+  }
+  
+  // Play/stop with Enter
+  else if (e.key === 'Enter') {
+    togglePlayback();
     e.preventDefault();
   }
   
