@@ -40,6 +40,11 @@
     background: #ff7028;
   }
   
+  button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  
   #grid {
     display: inline-grid;
     gap: 1px;
@@ -76,6 +81,7 @@
   <label>Rows: <input type="number" id="rows" value="30" min="1"></label>
   <label>Cols: <input type="number" id="cols" value="50" min="1"></label>
   <button onclick="createGrid()">Resize</button>
+  <button onclick="undo()" id="undoBtn" disabled>Undo</button>
   <button onclick="copyText()">Copy</button>
   <button onclick="clearGrid()">Clear</button>
 </div>
@@ -88,6 +94,38 @@ let cols = 50;
 let focusedRow = 0;
 let focusedCol = 0;
 let tiles = [];
+let history = [];
+let maxHistory = 50;
+
+function saveState() {
+  const state = [];
+  for (let r = 0; r < rows; r++) {
+    state[r] = [];
+    for (let c = 0; c < cols; c++) {
+      state[r][c] = tiles[r][c].textContent;
+    }
+  }
+  history.push({ grid: state, row: focusedRow, col: focusedCol });
+  if (history.length > maxHistory) history.shift();
+  updateUndoButton();
+}
+
+function undo() {
+  if (history.length === 0) return;
+  const state = history.pop();
+  
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      tiles[r][c].textContent = state.grid[r][c];
+    }
+  }
+  focusTile(state.row, state.col);
+  updateUndoButton();
+}
+
+function updateUndoButton() {
+  document.getElementById('undoBtn').disabled = history.length === 0;
+}
 
 function createGrid() {
   rows = parseInt(document.getElementById('rows').value);
@@ -97,6 +135,8 @@ function createGrid() {
   grid.innerHTML = '';
   grid.style.gridTemplateColumns = `repeat(${cols}, 14px)`;
   tiles = [];
+  history = [];
+  updateUndoButton();
   
   for (let r = 0; r < rows; r++) {
     tiles[r] = [];
@@ -109,6 +149,7 @@ function createGrid() {
       tile.draggable = true;
       
       tile.addEventListener('click', () => focusTile(r, c));
+      tile.addEventListener('dblclick', () => pasteAtTile(r, c));
       tile.addEventListener('dragstart', handleDragStart);
       tile.addEventListener('dragover', handleDragOver);
       tile.addEventListener('drop', handleDrop);
@@ -136,13 +177,43 @@ function advanceCursor() {
     focusedCol = 0;
     focusedRow++;
     if (focusedRow >= rows) {
-      focusedRow = 0;
+      focusedRow = rows - 1;
+      focusedCol = cols - 1;
     }
   }
   focusTile(focusedRow, focusedCol);
 }
 
+function pasteAtTile(r, c) {
+  navigator.clipboard.readText().then(text => {
+    if (!text) return;
+    
+    saveState();
+    focusTile(r, c);
+    
+    for (let char of text) {
+      if (focusedRow >= rows) break;
+      
+      if (char === '\n') {
+        focusedCol = 0;
+        focusedRow++;
+      } else {
+        tiles[focusedRow][focusedCol].textContent = char;
+        focusedCol++;
+        
+        if (focusedCol >= cols) {
+          focusedCol = 0;
+          focusedRow++;
+        }
+      }
+    }
+    
+    focusTile(focusedRow, focusedCol);
+  });
+}
+
 function handleDragStart(e) {
+  saveState();
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', e.target.textContent);
   e.dataTransfer.setData('row', e.target.dataset.row);
@@ -166,7 +237,6 @@ function handleDrop(e) {
   const destRow = parseInt(e.target.dataset.row);
   const destCol = parseInt(e.target.dataset.col);
   
-  // Swap characters
   const destChar = e.target.textContent;
   e.target.textContent = char;
   if (srcRow && srcCol) {
@@ -185,18 +255,52 @@ function copyText() {
     if (r < rows - 1) text += '\n';
   }
   navigator.clipboard.writeText(text);
-  alert('Copied to clipboard');
 }
 
 function clearGrid() {
+  saveState();
   tiles.forEach(row => row.forEach(tile => tile.textContent = ' '));
   focusTile(0, 0);
 }
 
+// Paste handler
+document.addEventListener('paste', (e) => {
+  e.preventDefault();
+  const text = e.clipboardData.getData('text/plain');
+  if (!text) return;
+  
+  saveState();
+  
+  for (let char of text) {
+    if (focusedRow >= rows) break;
+    
+    if (char === '\n') {
+      focusedCol = 0;
+      focusedRow++;
+    } else {
+      tiles[focusedRow][focusedCol].textContent = char;
+      focusedCol++;
+      
+      if (focusedCol >= cols) {
+        focusedCol = 0;
+        focusedRow++;
+      }
+    }
+  }
+  
+  focusTile(focusedRow, focusedCol);
+});
+
 // Keyboard handling
 document.addEventListener('keydown', (e) => {
+  // Undo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    undo();
+    e.preventDefault();
+  }
+  
   // Arrow navigation
-  if (e.key === 'ArrowUp' && focusedRow > 0) {
+  else if (e.key === 'ArrowUp' && focusedRow > 0) {
     focusTile(focusedRow - 1, focusedCol);
     e.preventDefault();
   } else if (e.key === 'ArrowDown' && focusedRow < rows - 1) {
@@ -210,25 +314,9 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
   }
   
-  // 'p' for paste
-  else if (e.key === 'p' || e.key === 'P') {
-    navigator.clipboard.readText().then(text => {
-      for (let char of text) {
-        if (char === '\n') {
-          focusedCol = 0;
-          focusedRow++;
-          if (focusedRow >= rows) break;
-        } else {
-          tiles[focusedRow][focusedCol].textContent = char;
-          advanceCursor();
-        }
-      }
-    });
-    e.preventDefault();
-  }
-  
   // Regular typing
   else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    saveState();
     tiles[focusedRow][focusedCol].textContent = e.key;
     advanceCursor();
     e.preventDefault();
@@ -236,6 +324,7 @@ document.addEventListener('keydown', (e) => {
   
   // Backspace
   else if (e.key === 'Backspace') {
+    saveState();
     tiles[focusedRow][focusedCol].textContent = ' ';
     if (focusedCol > 0) {
       focusTile(focusedRow, focusedCol - 1);
