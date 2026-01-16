@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Grid</title>
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: #faf8f5;
+    color: #2a2a2a;
+    font-family: monospace;
+  }
+  
+  .controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    background: #fff;
+  }
+  
+  button {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    background: #ff8c42;
+    color: #faf8f5;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  
+  button:hover {
+    background: #ff7028;
+  }
+  
+  #grid {
+    display: inline-grid;
+    gap: 1px;
+    background: #ddd;
+    border: 2px solid #2a2a2a;
+    user-select: none;
+  }
+  
+  .tile {
+    width: 14px;
+    height: 20px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: text;
+    font-size: 14px;
+    position: relative;
+  }
+  
+  .tile.focused {
+    outline: 2px solid #00d9ff;
+    z-index: 1;
+  }
+  
+  .tile.dragging {
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <label>Rows: <input type="number" id="rows" value="30" min="1"></label>
+  <label>Cols: <input type="number" id="cols" value="50" min="1"></label>
+  <button onclick="createGrid()">Resize</button>
+  <button onclick="copyText()">Copy</button>
+  <button onclick="clearGrid()">Clear</button>
+</div>
+
+<div id="grid"></div>
+
+<script>
+let rows = 30;
+let cols = 50;
+let focusedRow = 0;
+let focusedCol = 0;
+let tiles = [];
+
+function createGrid() {
+  rows = parseInt(document.getElementById('rows').value);
+  cols = parseInt(document.getElementById('cols').value);
+  
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${cols}, 14px)`;
+  tiles = [];
+  
+  for (let r = 0; r < rows; r++) {
+    tiles[r] = [];
+    for (let c = 0; c < cols; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.textContent = ' ';
+      tile.dataset.row = r;
+      tile.dataset.col = c;
+      tile.draggable = true;
+      
+      tile.addEventListener('click', () => focusTile(r, c));
+      tile.addEventListener('dragstart', handleDragStart);
+      tile.addEventListener('dragover', handleDragOver);
+      tile.addEventListener('drop', handleDrop);
+      
+      grid.appendChild(tile);
+      tiles[r][c] = tile;
+    }
+  }
+  
+  focusTile(0, 0);
+}
+
+function focusTile(r, c) {
+  document.querySelectorAll('.tile').forEach(t => t.classList.remove('focused'));
+  if (tiles[r] && tiles[r][c]) {
+    tiles[r][c].classList.add('focused');
+    focusedRow = r;
+    focusedCol = c;
+  }
+}
+
+function advanceCursor() {
+  focusedCol++;
+  if (focusedCol >= cols) {
+    focusedCol = 0;
+    focusedRow++;
+    if (focusedRow >= rows) {
+      focusedRow = 0;
+    }
+  }
+  focusTile(focusedRow, focusedCol);
+}
+
+function handleDragStart(e) {
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', e.target.textContent);
+  e.dataTransfer.setData('row', e.target.dataset.row);
+  e.dataTransfer.setData('col', e.target.dataset.col);
+  e.target.classList.add('dragging');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const char = e.dataTransfer.getData('text/plain');
+  const srcRow = e.dataTransfer.getData('row');
+  const srcCol = e.dataTransfer.getData('col');
+  
+  document.querySelectorAll('.dragging').forEach(t => t.classList.remove('dragging'));
+  
+  const destRow = parseInt(e.target.dataset.row);
+  const destCol = parseInt(e.target.dataset.col);
+  
+  // Swap characters
+  const destChar = e.target.textContent;
+  e.target.textContent = char;
+  if (srcRow && srcCol) {
+    tiles[srcRow][srcCol].textContent = destChar;
+  }
+  
+  focusTile(destRow, destCol);
+}
+
+function copyText() {
+  let text = '';
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      text += tiles[r][c].textContent;
+    }
+    if (r < rows - 1) text += '\n';
+  }
+  navigator.clipboard.writeText(text);
+  alert('Copied to clipboard');
+}
+
+function clearGrid() {
+  tiles.forEach(row => row.forEach(tile => tile.textContent = ' '));
+  focusTile(0, 0);
+}
+
+// Keyboard handling
+document.addEventListener('keydown', (e) => {
+  // Arrow navigation
+  if (e.key === 'ArrowUp' && focusedRow > 0) {
+    focusTile(focusedRow - 1, focusedCol);
+    e.preventDefault();
+  } else if (e.key === 'ArrowDown' && focusedRow < rows - 1) {
+    focusTile(focusedRow + 1, focusedCol);
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft' && focusedCol > 0) {
+    focusTile(focusedRow, focusedCol - 1);
+    e.preventDefault();
+  } else if (e.key === 'ArrowRight' && focusedCol < cols - 1) {
+    focusTile(focusedRow, focusedCol + 1);
+    e.preventDefault();
+  }
+  
+  // 'p' for paste
+  else if (e.key === 'p' || e.key === 'P') {
+    navigator.clipboard.readText().then(text => {
+      for (let char of text) {
+        if (char === '\n') {
+          focusedCol = 0;
+          focusedRow++;
+          if (focusedRow >= rows) break;
+        } else {
+          tiles[focusedRow][focusedCol].textContent = char;
+          advanceCursor();
+        }
+      }
+    });
+    e.preventDefault();
+  }
+  
+  // Regular typing
+  else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    tiles[focusedRow][focusedCol].textContent = e.key;
+    advanceCursor();
+    e.preventDefault();
+  }
+  
+  // Backspace
+  else if (e.key === 'Backspace') {
+    tiles[focusedRow][focusedCol].textContent = ' ';
+    if (focusedCol > 0) {
+      focusTile(focusedRow, focusedCol - 1);
+    } else if (focusedRow > 0) {
+      focusTile(focusedRow - 1, cols - 1);
+    }
+    e.preventDefault();
+  }
+});
+
+createGrid();
+</script>
+
+</body>
+</html>
