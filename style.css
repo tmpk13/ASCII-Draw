@@ -1,0 +1,192 @@
+body {
+    margin: 0;
+    padding: 20px;
+    background: #faf8f5;
+    color: #2a2a2a;
+    font-family: monospace;
+}
+
+.controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+input[type="number"], input[type="text"] {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    background: #fff;
+}
+
+input[type="text"] {
+    width: 120px;
+}
+
+#playInterval {
+    width: 70px;
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #ff8c42;
+}
+
+button {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    background: #ff8c42;
+    color: #faf8f5;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+button:hover {
+    background: #ff7028;
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.main-container {
+    display: flex;
+    gap: 20px;
+}
+
+#grid {
+    display: inline-grid;
+    gap: 1px;
+    background: #ddd;
+    border: 2px solid #2a2a2a;
+    user-select: none;
+}
+
+.tile {
+    width: 14px;
+    height: 20px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: text;
+    font-size: 14px;
+    position: relative;
+}
+
+.tile.focused {
+    outline: 2px solid #00d9ff;
+    z-index: 1;
+}
+
+.tile.highlighted {
+    background: #b3e5fc;
+}
+
+.tile.dragging {
+    opacity: 0.5;
+}
+
+.saved-states {
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.saved-states h3 {
+    margin-top: 0;
+    font-size: 14px;
+}
+
+.tabs-container {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.tab {
+    padding: 6px 10px;
+    background: #ddd;
+    border: 1px solid #bbb;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tab.active {
+    background: #00d9ff;
+    color: #faf8f5;
+    border-color: #00d9ff;
+}
+
+.tab-close {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.tab-close:hover {
+    color: #ff6b6b;
+}
+
+.new-tab-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    background: #6ecf8f;
+}
+
+.new-tab-btn:hover {
+    background: #5bbf7f;
+}
+
+.state-item {
+    border: 2px solid #ddd;
+    padding: 8px;
+    margin-bottom: 10px;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.state-item:hover {
+    border-color: #ff8c42;
+}
+
+.state-item canvas {
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    border: 1px solid #ddd;
+    margin-bottom: 5px;
+}
+
+.state-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+.state-delete {
+    background: #ff6b6b;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.state-delete:hover {
+    background: #ff5252;
+}
+
+#copy-chars {
+    width: 75vmin;
+}
