@@ -1,38 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Text Grid</title>
-<link href="./style.css" rel="stylesheet">
-</link>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Grid</title>
+  <link href="./style.css" rel="stylesheet"></link>
 </head>
 <body>
 
-<div class="controls">
-  <label>Rows: <input type="number" id="rows" value="30" min="1"></label>
-  <label>Cols: <input type="number" id="cols" value="50" min="1"></label>
-  <button onclick="createGrid()">Resize</button>
-  <button onclick="undo()" id="undoBtn" disabled>Undo</button>
-  <button onclick="saveGridState()">Save State</button>
-  <button onclick="copyText()">Copy</button>
-  <button onclick="clearGrid()">Clear</button>
-  <button onclick="togglePreview()">👁 Preview</button>
-  <label>Interval (ms): <input type="number" id="playInterval" value="500" min="100" step="100"></label>
-  <label><input type="checkbox" id="loopPlay"> Loop</label>
-  <button onclick="togglePlayback()" id="playBtn">▶ Play</button>
-</div>
+  <div class="controls">
+    <label>Rows: <input type="number" id="rows" value="30" min="1"></label>
+    <label>Cols: <input type="number" id="cols" value="50" min="1"></label>
+    <button onclick="createGrid()">Resize</button>
+    <button onclick="undo()" id="undoBtn" disabled>Undo</button>
+    <button onclick="saveGridState()">Save State</button>
+    <button onclick="copyText()">Copy</button>
+    <button onclick="clearGrid()">Clear</button>
+    <button onclick="togglePreview()">👁 Preview</button>
+    <label>Interval (ms): <input type="number" id="playInterval" value="500" min="100" step="100"></label>
+    <label><input type="checkbox" id="loopPlay"> Loop</label>
+    <button onclick="togglePlayback()" id="playBtn">▶ Play</button>
+  </div>
 
-<div class="main-container">
-  <div id="grid"></div>
+  <div class="main-container">
+    <div id="grid"></div>
   
+      
+    <iframe src="https://tmpk13.github.io/HTML-Copy-Characters/" id="copy-chars"></iframe>
     <pre id="preview" style="display: none;"></pre>
-
-  <iframe src="https://tmpk13.github.io/HTML-Copy-Characters/" id="copy-chars"></iframe>
-</div>
+  </div>
 
 
-<div class="saved-states">
+  <div class="saved-states">
     <h3>Branches</h3>
     <div class="tabs-container" id="tabsContainer"></div>
     <div id="statesList"></div>
