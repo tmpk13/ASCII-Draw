@@ -124,6 +124,7 @@ function saveToStorage() {
   };
   
   localStorage.setItem('textGrid', JSON.stringify(data));
+  updatePreview();
 }
 
 function saveState() {
@@ -816,3 +817,36 @@ setInterval(saveToStorage, 2000);
 
 loadFromStorage();
 if (tiles.length === 0) createGrid();
+
+
+// Preview text
+let showPreview = false;
+
+function togglePreview() {
+  showPreview = !showPreview;
+  const preview = document.getElementById('preview');
+  
+  if (showPreview) {
+    updatePreview();
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function updatePreview() {
+  if (!showPreview) return;
+  
+  const preview = document.getElementById('preview');
+  let text = '';
+  
+  for (let r = 0; r < rows; r++) {
+    let line = '';
+    for (let c = 0; c < cols; c++) {
+      line += tiles[r][c].textContent;
+    }
+    text += line.replace(/\s+$/, '') + '\n';
+  }
+  
+  preview.textContent = text;
+}
