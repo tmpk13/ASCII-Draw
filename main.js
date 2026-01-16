@@ -615,7 +615,7 @@ function pasteAtTile(r, c) {
         lastC++;
         
         if (lastC >= cols) {
-          lastC = 0;
+          lastC = c;
           lastR++;
         }
       }
@@ -680,7 +680,7 @@ document.addEventListener('paste', (e) => {
     if (lastR >= rows) break;
     
     if (char === '\n') {
-      lastC = 0;
+      lastC = focusedCol;
       lastR++;
     } else {
       tiles[lastR][lastC].textContent = char;
