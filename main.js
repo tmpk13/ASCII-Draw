@@ -411,6 +411,7 @@ function createGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   grid.style.gridTemplateColumns = `repeat(${cols}, 14px)`;
+  grid.style.gridTemplateRows = `repeat(${rows}, 20px)`;
   tiles = [];
   history = [];
   updateUndoButton();
