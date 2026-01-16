@@ -21,11 +21,15 @@
     flex-wrap: wrap;
   }
   
-  input[type="number"] {
+  input[type="number"], input[type="text"] {
     width: 60px;
     padding: 5px;
     border: 1px solid #ddd;
     background: #fff;
+  }
+  
+  input[type="text"] {
+    width: 120px;
   }
   
   button {
@@ -81,13 +85,62 @@
   }
   
   .saved-states {
-    min-width: 200px;
-    max-width: 300px;
+    min-width: 250px;
+    max-width: 350px;
   }
   
   .saved-states h3 {
     margin-top: 0;
     font-size: 14px;
+  }
+  
+  .tabs-container {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .tab {
+    padding: 6px 10px;
+    background: #ddd;
+    border: 1px solid #bbb;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .tab.active {
+    background: #00d9ff;
+    color: #faf8f5;
+    border-color: #00d9ff;
+  }
+  
+  .tab-close {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0;
+  }
+  
+  .tab-close:hover {
+    color: #ff6b6b;
+  }
+  
+  .new-tab-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    background: #6ecf8f;
+  }
+  
+  .new-tab-btn:hover {
+    background: #5bbf7f;
   }
   
   .state-item {
@@ -145,7 +198,8 @@
   <div id="grid"></div>
   
   <div class="saved-states">
-    <h3>Saved States</h3>
+    <h3>Branches</h3>
+    <div class="tabs-container" id="tabsContainer"></div>
     <div id="statesList"></div>
   </div>
 </div>
@@ -158,7 +212,61 @@ let focusedCol = 0;
 let tiles = [];
 let history = [];
 let maxHistory = 50;
-let savedStates = [];
+let branches = {};
+let activeBranch = 'main';
+
+// Load from localStorage
+function loadFromStorage() {
+  const saved = localStorage.getItem('textGrid');
+  if (saved) {
+    const data = JSON.parse(saved);
+    branches = data.branches || { main: [] };
+    activeBranch = data.activeBranch || 'main';
+    
+    if (data.currentGrid) {
+      rows = data.currentGrid.rows;
+      cols = data.currentGrid.cols;
+      document.getElementById('rows').value = rows;
+      document.getElementById('cols').value = cols;
+      
+      createGrid();
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          tiles[r][c].textContent = data.currentGrid.grid[r][c];
+        }
+      }
+      focusTile(0, 0);
+    }
+  } else {
+    branches = { main: [] };
+  }
+  renderTabs();
+  renderSavedStates();
+}
+
+// Save to localStorage
+function saveToStorage() {
+  const currentGrid = [];
+  for (let r = 0; r < rows; r++) {
+    currentGrid[r] = [];
+    for (let c = 0; c < cols; c++) {
+      currentGrid[r][c] = tiles[r][c].textContent;
+    }
+  }
+  
+  const data = {
+    branches: branches,
+    activeBranch: activeBranch,
+    currentGrid: {
+      grid: currentGrid,
+      rows: rows,
+      cols: cols
+    }
+  };
+  
+  localStorage.setItem('textGrid', JSON.stringify(data));
+}
 
 function saveState() {
   const state = [];
@@ -184,10 +292,80 @@ function undo() {
   }
   focusTile(state.row, state.col);
   updateUndoButton();
+  saveToStorage();
 }
 
 function updateUndoButton() {
   document.getElementById('undoBtn').disabled = history.length === 0;
+}
+
+function createNewBranch() {
+  const name = prompt('Branch name:', `branch-${Object.keys(branches).length + 1}`);
+  if (!name || name.trim() === '') return;
+  
+  branches[name] = [];
+  activeBranch = name;
+  renderTabs();
+  renderSavedStates();
+  saveToStorage();
+}
+
+function switchBranch(name) {
+  activeBranch = name;
+  renderTabs();
+  renderSavedStates();
+  saveToStorage();
+}
+
+function deleteBranch(name) {
+  if (name === 'main') {
+    alert('Cannot delete main branch');
+    return;
+  }
+  
+  if (confirm(`Delete branch "${name}"?`)) {
+    delete branches[name];
+    if (activeBranch === name) {
+      activeBranch = 'main';
+    }
+    renderTabs();
+    renderSavedStates();
+    saveToStorage();
+  }
+}
+
+function renderTabs() {
+  const container = document.getElementById('tabsContainer');
+  container.innerHTML = '';
+  
+  Object.keys(branches).forEach(name => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (name === activeBranch ? ' active' : '');
+    
+    const label = document.createElement('span');
+    label.textContent = name;
+    tab.appendChild(label);
+    
+    if (name !== 'main') {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'tab-close';
+      closeBtn.textContent = '×';
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteBranch(name);
+      };
+      tab.appendChild(closeBtn);
+    }
+    
+    tab.onclick = () => switchBranch(name);
+    container.appendChild(tab);
+  });
+  
+  const newBtn = document.createElement('button');
+  newBtn.className = 'new-tab-btn';
+  newBtn.textContent = '+';
+  newBtn.onclick = createNewBranch;
+  container.appendChild(newBtn);
 }
 
 function saveGridState() {
@@ -200,7 +378,7 @@ function saveGridState() {
   }
   
   const timestamp = new Date().toLocaleString();
-  savedStates.push({
+  branches[activeBranch].push({
     grid: state,
     rows: rows,
     cols: cols,
@@ -208,19 +386,19 @@ function saveGridState() {
   });
   
   renderSavedStates();
+  saveToStorage();
 }
 
 function loadGridState(index) {
-  const state = savedStates[index];
+  const state = branches[activeBranch][index];
   
-  // Resize if needed
   if (state.rows !== rows || state.cols !== cols) {
     document.getElementById('rows').value = state.rows;
     document.getElementById('cols').value = state.cols;
     createGrid();
   }
   
-  saveState(); // Save to undo history
+  saveState();
   
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
@@ -229,22 +407,25 @@ function loadGridState(index) {
   }
   
   focusTile(0, 0);
+  saveToStorage();
 }
 
 function deleteGridState(index) {
-  savedStates.splice(index, 1);
+  branches[activeBranch].splice(index, 1);
   renderSavedStates();
+  saveToStorage();
 }
 
 function renderSavedStates() {
   const container = document.getElementById('statesList');
   container.innerHTML = '';
   
-  savedStates.forEach((state, index) => {
+  const states = branches[activeBranch] || [];
+  
+  states.forEach((state, index) => {
     const item = document.createElement('div');
     item.className = 'state-item';
     
-    // Create canvas preview
     const canvas = document.createElement('canvas');
     const previewWidth = 250;
     const previewHeight = Math.floor(previewWidth * (state.rows / state.cols));
@@ -365,6 +546,7 @@ function pasteAtTile(r, c) {
     }
     
     focusTile(focusedRow, focusedCol);
+    saveToStorage();
   });
 }
 
@@ -400,6 +582,7 @@ function handleDrop(e) {
   }
   
   focusTile(destRow, destCol);
+  saveToStorage();
 }
 
 function copyText() {
@@ -417,9 +600,9 @@ function clearGrid() {
   saveState();
   tiles.forEach(row => row.forEach(tile => tile.textContent = ' '));
   focusTile(0, 0);
+  saveToStorage();
 }
 
-// Paste handler
 document.addEventListener('paste', (e) => {
   e.preventDefault();
   const text = e.clipboardData.getData('text/plain');
@@ -445,17 +628,14 @@ document.addEventListener('paste', (e) => {
   }
   
   focusTile(focusedRow, focusedCol);
+  saveToStorage();
 });
 
-// Keyboard handling
 document.addEventListener('keydown', (e) => {
-  // Undo
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
     undo();
     e.preventDefault();
   }
-  
-  // Arrow navigation
   else if (e.key === 'ArrowUp' && focusedRow > 0) {
     focusTile(focusedRow - 1, focusedCol);
     e.preventDefault();
@@ -469,16 +649,13 @@ document.addEventListener('keydown', (e) => {
     focusTile(focusedRow, focusedCol + 1);
     e.preventDefault();
   }
-  
-  // Regular typing
   else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
     saveState();
     tiles[focusedRow][focusedCol].textContent = e.key;
     advanceCursor();
+    saveToStorage();
     e.preventDefault();
   }
-  
-  // Backspace
   else if (e.key === 'Backspace') {
     saveState();
     tiles[focusedRow][focusedCol].textContent = ' ';
@@ -487,11 +664,17 @@ document.addEventListener('keydown', (e) => {
     } else if (focusedRow > 0) {
       focusTile(focusedRow - 1, cols - 1);
     }
+    saveToStorage();
     e.preventDefault();
   }
 });
 
-createGrid();
+// Auto-save on any change
+setInterval(saveToStorage, 2000);
+
+// Initialize
+loadFromStorage();
+if (tiles.length === 0) createGrid();
 </script>
 
 </body>
