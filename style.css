@@ -1,11 +1,14 @@
+@import url(https://db.onlinewebfonts.com/c/e8e7a20efd02fd010b6634a4d4cfbc8b?family=F0xProto);
+
 body {
     margin: 0;
     padding: 20px;
     background: #faf8f5;
     color: #2a2a2a;
-    font-family: monospace;
 }
-
+pre {
+    font-size: 3vmin;
+}
 .controls {
     margin-bottom: 15px;
     display: flex;
