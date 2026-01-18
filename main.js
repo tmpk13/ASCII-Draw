@@ -426,11 +426,15 @@ function createGrid() {
       tile.dataset.row = r;
       tile.dataset.col = c;
       
+      tile.addEventListener('dblclick', () => {
+        if (anchorPos) {
+          selectArea(anchorPos.r, anchorPos.c, r, c);
+        }
+      });
       tile.addEventListener('mousedown', (e) => handleMouseDown(e, r, c));
       tile.addEventListener('mouseenter', (e) => handleMouseEnter(e, r, c));
       tile.addEventListener('mouseup', () => handleMouseUp());
-      tile.addEventListener('dblclick', () => pasteAtTile(r, c));
-      
+            
       grid.appendChild(tile);
       tiles[r][c] = tile;
     }
@@ -440,6 +444,11 @@ function createGrid() {
   
   focusTile(0, 0);
   anchorPos = { r: 0, c: 0 };
+}
+
+function selectArea(x, y, w, h) {
+  highlightSelection(x, y, w, h);
+  focusTile(w, h);
 }
 
 function handleMouseDown(e, r, c) {
@@ -458,8 +467,9 @@ function handleMouseDown(e, r, c) {
   } else if (e.shiftKey) {
     // Shift+click: extend selection from anchor
     if (anchorPos) {
-      highlightSelection(anchorPos.r, anchorPos.c, r, c);
-      focusTile(r, c);
+      selectArea(anchorPos.r, anchorPos.c, r, c);
+      // highlightSelection(anchorPos.r, anchorPos.c, r, c);
+      // focusTile(r, c);
     }
   } else if (selectedTiles.has(`${r},${c}`)) {
     // Click on highlighted area: start drag
@@ -851,3 +861,41 @@ function updatePreview() {
   
   preview.textContent = text;
 }
+
+
+
+
+
+function toggleElement(el) {
+  el.style.display = ((el.style.display === 'none') ? 'block' : 'none');
+}
+
+let gridToggle = document.getElementById("characterGridToggle");
+let grid = document.getElementById("copy-chars");
+
+
+let gridWidth = grid.style.width;
+
+gridToggle.addEventListener('click', (e) => {
+  let invisible = grid.style.display === 'none';
+  
+  if (invisible) {
+    grid.animate([
+      { width: 0, opacity: 0 },
+      { width: gridWidth*1.1 },
+      { width: gridWidth, opacity: 1 }
+    ], { duration: 300, easing: 'ease' });
+    gridToggle.textContent = "<";
+    grid.style.display = 'block';
+  }
+  else {
+    let animationLength = 200;
+    gridWidth = grid.style.width;
+    grid.animate([
+      { width: gridWidth, opacity: 1 },
+      { width: 0, opacity: 0 }
+      ], { duration: animationLength, easing: 'ease' });
+    gridToggle.textContent = ">";
+    setTimeout(()=>{ grid.style.display = 'none'; }, animationLength);
+  }
+});

@@ -16,7 +16,7 @@
     <button onclick="saveGridState()">Save State</button>
     <button onclick="copyText()">Copy</button>
     <button onclick="clearGrid()">Clear</button>
-    <button onclick="togglePreview()">👁 Preview</button>
+    <button onclick="togglePreview()">Preview</button>
     <label>Interval (ms): <input type="number" id="playInterval" value="500" min="100" step="100"></label>
     <label><input type="checkbox" id="loopPlay"> Loop</label>
     <button onclick="togglePlayback()" id="playBtn">▶ Play</button>
@@ -25,7 +25,7 @@
   <div class="main-container">
     <div id="grid"></div>
   
-      
+    <button id="characterGridToggle"><</button>  
     <iframe src="https://tmpk13.github.io/HTML-Copy-Characters/" id="copy-chars"></iframe>
     <pre id="preview" style="display: none;"></pre>
   </div>

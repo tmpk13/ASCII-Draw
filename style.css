@@ -6,6 +6,9 @@ body {
     background: #faf8f5;
     color: #2a2a2a;
 }
+html {
+    font-size: 1vmin;
+}
 pre {
     font-size: 3vmin;
 }
@@ -29,7 +32,7 @@ input[type="text"] {
 }
 
 #playInterval {
-    width: 70px;
+    width: 5em;
 }
 
 input[type="checkbox"] {
@@ -57,7 +60,7 @@ button:disabled {
 
 .main-container {
     display: flex;
-    gap: 20px;
+    gap: 0;
 }
 
 #grid {
@@ -192,4 +195,16 @@ button:disabled {
 
 #copy-chars {
     width: 75vmin;
+    margin-left: 0;
+    border: solid 1rem #ff8c42;
+    
 }
+
+#characterGridToggle {
+    margin-right: 0;
+    width: 15rem;
+    font-size: 10vmin;
+    border: solid 1rem #ff8c42;
+    border-radius: 0;
+}
+
